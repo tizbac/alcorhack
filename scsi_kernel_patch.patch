@@ -1,0 +1,60 @@
+--- a/drivers/scsi/scsi.c	2014-07-13 23:04:33.000000000 +0200
++++ b/drivers/scsi/scsi.c	2014-07-20 13:27:00.625635477 +0200
+@@ -677,10 +677,13 @@
+ 	/* 
+ 	 * If SCSI-2 or lower, store the LUN value in cmnd.
+ 	 */
+-	if (cmd->device->scsi_level <= SCSI_2 &&
+-	    cmd->device->scsi_level != SCSI_UNKNOWN) {
+-		cmd->cmnd[1] = (cmd->cmnd[1] & 0x1f) |
+-			       (cmd->device->lun << 5 & 0xe0);
++	if ( ! cmd->request->cmd_flags & REQ_NO_LUN_OVERWRITE )
++	{
++		if (cmd->device->scsi_level <= SCSI_2 &&
++			cmd->device->scsi_level != SCSI_UNKNOWN) {
++			cmd->cmnd[1] = (cmd->cmnd[1] & 0x1f) |
++					(cmd->device->lun << 5 & 0xe0);
++		}
+ 	}
+ 
+ 	scsi_log_send(cmd);
+--- a/drivers/scsi/sg.c	2014-07-13 23:04:33.000000000 +0200
++++ b/drivers/scsi/sg.c	2014-07-20 13:24:28.000000000 +0200
+@@ -1664,7 +1664,8 @@
+ 
+ 	if ((dxfer_len <= 0) || (dxfer_dir == SG_DXFER_NONE))
+ 		return 0;
+-
++    if ( hp->flags & SG_FLAG_LUN_INHIBIT )
++        rq->cmd_flags |= REQ_NO_LUN_OVERWRITE;
+ 	if (sg_allow_dio && hp->flags & SG_FLAG_DIRECT_IO &&
+ 	    dxfer_dir != SG_DXFER_UNKNOWN && !iov_count &&
+ 	    !sfp->parentdp->device->host->unchecked_isa_dma &&
+--- a/include/linux/blk_types.h	2014-07-13 23:04:33.000000000 +0200
++++ b/include/linux/blk_types.hh	2014-07-20 13:23:58.657146853 +0200
+@@ -191,6 +191,7 @@
+ 	__REQ_END,		/* last of chain of requests */
+ 	__REQ_HASHED,		/* on IO scheduler merge hash */
+ 	__REQ_MQ_INFLIGHT,	/* track inflight for MQ */
++    __REQ_NO_LUN_OVERWRITE, /* Prevent overwriting the upper 3 MSB of the CDB */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+ 
+@@ -245,5 +246,5 @@
+ #define REQ_END			(1ULL << __REQ_END)
+ #define REQ_HASHED		(1ULL << __REQ_HASHED)
+ #define REQ_MQ_INFLIGHT		(1ULL << __REQ_MQ_INFLIGHT)
+-
++#define REQ_NO_LUN_OVERWRITE    (1ULL << __REQ_NO_LUN_OVERWRITE)
+ #endif /* __LINUX_BLK_TYPES_H */
+--- a/include/linux/blkdev.h	2014-07-13 23:04:33.000000000 +0200
++++ b/include/linux/blkdev.h	2014-07-20 13:23:08.000000000 +0200
+@@ -188,6 +188,8 @@
+ 	unsigned char __cmd[BLK_MAX_CDB];
+ 	unsigned char *cmd;
+ 	unsigned short cmd_len;
++   unsigned char flags;
++    
+ 
+ 	unsigned int extra_len;	/* length of alignment and padding */
+ 	unsigned int sense_len;

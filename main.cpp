@@ -12,13 +12,16 @@
 
 #pragma pack(push, 1)
 typedef struct {
-    unsigned char unk[0xc];
+    unsigned char unk[0x2];
+	unsigned char vendorStrLen2;
+	unsigned char productStrLen2;
+	unsigned char unk2[8];
     unsigned short idVendor;
     unsigned short idProduct;
     unsigned short bcdDevice;
     unsigned char iManufacter;
     unsigned char iProduct;
-    unsigned char unk2[2];
+    unsigned char unk3[2];
     unsigned char vendorStrLength; // This includes the field itself too till the end of the string
     unsigned char vendorStrDescType; // 0x03
 } AlcorSCSIRebuildPart1;
@@ -274,7 +277,7 @@ int main(int argc, char **argv) {
         scsi_fd = scsi_pt_open_device(vm["device"].as<std::string>().c_str(),0,0);
         ptvp = construct_scsi_pt_obj();
         set_scsi_pt_flags(ptvp,0x0);
-        unsigned char cdb[] = { 0x82 , 0x51 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00, 0x00,0x00,0x00 };
+        unsigned char cdb[] = { 0x82 , 0x51 , 0x01 , 0x00 , 0x00 , 0x00 , 0x00, 0x00,0x00,0x00 };
         set_scsi_pt_cdb(ptvp,cdb,10);
         unsigned char result[512];
         set_scsi_pt_data_in(ptvp,result,512);
@@ -311,6 +314,7 @@ int main(int argc, char **argv) {
         fwrite(result,1,512,out);
         fclose(out);
         std::cout << "Config downloaded." << std::endl;
+		scsi_pt_close_device(scsi_fd);
         return 0;
     }
     if ( vm.count("setconfig") && vm.count("device") )
@@ -329,6 +333,8 @@ int main(int argc, char **argv) {
         do_scsi_pt(ptvp,scsi_fd,512,0);
         destruct_scsi_pt_obj(ptvp);
         std::cout << "Config uploaded." << std::endl;
+		scsi_pt_close_device(scsi_fd);
+		return 0;
     }
     if ( vm.count("setvendorstr") && vm.count("device") )
     {
@@ -368,7 +374,7 @@ int main(int argc, char **argv) {
         AlcorSCSIRebuildPart1 * p1 = (AlcorSCSIRebuildPart1*)newconfig;
         AlcorSCSIRebuildPart1 * p1_old = (AlcorSCSIRebuildPart1*)result;
         p1->vendorStrLength = newvendor.length()*2+2;
-        
+        p1->vendorStrLen2 = newvendor.length()*2+2;
         unsigned char* strpointer1 = &newconfig[sizeof(AlcorSCSIRebuildPart1)];
         for ( int i = 0; i < newvendor.length(); i++ )
         {
@@ -400,13 +406,15 @@ int main(int argc, char **argv) {
         fclose(ff);
         do_scsi_pt(ptvp,scsi_fd,512,0);
         destruct_scsi_pt_obj(ptvp);
-        ptvp = construct_scsi_pt_obj();
+      /*  ptvp = construct_scsi_pt_obj();
        unsigned char cdb3[] = { 0x82 , 0x51 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00, 0x00,0x00,0x00 }; //Regenerate
         set_scsi_pt_cdb(ptvp,cdb3,10);
         set_scsi_pt_data_in(ptvp,result,512);
         set_scsi_pt_data_out(ptvp,NULL,0);
-        do_scsi_pt(ptvp,scsi_fd,512,0);
+        do_scsi_pt(ptvp,scsi_fd,512,0);*/
         
+	  
+	   scsi_pt_close_device(scsi_fd);
         
     }
     
