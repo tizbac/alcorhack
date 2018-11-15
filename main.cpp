@@ -168,7 +168,29 @@ int main(int argc, char **argv) {
         ("detectflash","Try to detect device's flash chip")
         ("fetchinfo","Print drive's information")
         ("setconfig",boost::program_options::value<std::string>(),"Set config raw data")
+        ("p0",boost::program_options::value<std::string>(),"cdb[0]")
+        ("p1",boost::program_options::value<std::string>(),"cdb[1]")
+        ("p2",boost::program_options::value<std::string>(),"cdb[2]")
+        ("p3",boost::program_options::value<std::string>(),"cdb[3]")
+        ("p4",boost::program_options::value<std::string>(),"cdb[4]")
+        ("p5",boost::program_options::value<std::string>(),"cdb[5]")
+        ("p6",boost::program_options::value<std::string>(),"cdb[6]")
+        ("p7",boost::program_options::value<std::string>(),"cdb[7]")
+        ("p8",boost::program_options::value<std::string>(),"cdb[8]")
+        ("p9",boost::program_options::value<std::string>(),"cdb[9]")
+        ("p10",boost::program_options::value<std::string>(),"cdb[10]")
+        ("p11",boost::program_options::value<std::string>(),"cdb[11]")
+        ("p12",boost::program_options::value<std::string>(),"cdb[12]")
+        ("p13",boost::program_options::value<std::string>(),"cdb[13]")
+        ("p14",boost::program_options::value<std::string>(),"cdb[14]")
+        ("p15",boost::program_options::value<std::string>(),"cdb[15]")
+        ("prepa",boost::program_options::value<std::string>(),"Preparation file A")
+        ("prepb",boost::program_options::value<std::string>(),"Preparation file B")
+        ("prepb2",boost::program_options::value<std::string>(),"Preparation file B2")
         ("getconfig",boost::program_options::value<std::string>(),"Save config raw data to file")
+        ("readsector",boost::program_options::value<std::string>(),"Read Sector to file")
+        ("readblock",boost::program_options::value<std::string>(),"Read whole Block to file")
+        ("file",boost::program_options::value<std::string>(),"Filename for saving sectors")
         ("setvendorstr",boost::program_options::value<std::string>(),"Set vendor string descriptor ( DANGEROUS )")
         ("device",boost::program_options::value<std::string>(),"SCSI device ( /dev/sdX )");
      
@@ -317,6 +339,143 @@ int main(int argc, char **argv) {
 		scsi_pt_close_device(scsi_fd);
         return 0;
     }
+    if ( (vm.count("readsector") ||vm.count("readblock")) && vm.count("device"))
+    {
+        int scsi_fd;
+        int block=vm.count("readblock");
+        struct sg_pt_base *ptvp = NULL;
+        scsi_fd = scsi_pt_open_device(vm["device"].as<std::string>().c_str(),0,0);
+
+  
+        if ( vm.count("prepa") && vm.count("device"))
+        {
+            struct sg_pt_base *ptvp = NULL;
+            ptvp = construct_scsi_pt_obj();
+            unsigned char cdb2[] = { 0xfa , 0x0a  , 0x00 , 0x10 , 0x00 , 0x00 , 0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+            unsigned char newcode[8704];
+            memset(newcode,0,sizeof(newcode));
+            FILE * f = fopen(vm["prepa"].as<std::string>().c_str(),"rb");
+            if(f!=NULL)
+            {
+              fread(newcode,1,sizeof(newcode),f);
+              fclose(f);
+            }
+	    std::cout << "Preparing with file A...\n";
+            set_scsi_pt_cdb(ptvp,cdb2,16);
+            set_scsi_pt_data_out(ptvp,newcode,sizeof(newcode));
+            do_scsi_pt(ptvp,scsi_fd,512,0);
+            destruct_scsi_pt_obj(ptvp);
+            std::cout << "Prepared with file A." << std::endl;
+        }
+        if ( vm.count("prepb") && vm.count("device"))
+        {
+            struct sg_pt_base *ptvp = NULL;
+            ptvp = construct_scsi_pt_obj();
+            unsigned char cdb2[] = { 0xfa , 0x0b  , 0x01 , 0x00 , 0x00 , 0x00 , 0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+            unsigned char newcode[2048];
+            memset(newcode,0,sizeof(newcode));
+            FILE * f = fopen(vm["prepb"].as<std::string>().c_str(),"rb");
+            if(f!=NULL)
+            {
+              fread(newcode,1,sizeof(newcode),f);
+              fclose(f);
+            }
+	    std::cout << "Preparing with file B...\n";
+            set_scsi_pt_cdb(ptvp,cdb2,16);
+            set_scsi_pt_data_out(ptvp,newcode,sizeof(newcode));
+            do_scsi_pt(ptvp,scsi_fd,512,0);
+            destruct_scsi_pt_obj(ptvp);
+            std::cout << "Prepared with file B." << std::endl;
+        }
+        if ( vm.count("prepb2") && vm.count("device"))
+        {
+            struct sg_pt_base *ptvp = NULL;
+            ptvp = construct_scsi_pt_obj();
+            unsigned char cdb2[] = { 0xfa , 0x0b  , 0x01 , 0x00 , 0x00 , 0x00 , 0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+            unsigned char newcode[2048];
+            memset(newcode,0,sizeof(newcode));
+            FILE * f = fopen(vm["prepb2"].as<std::string>().c_str(),"rb");
+            if(f!=NULL)
+            {
+              fread(newcode,1,sizeof(newcode),f);
+              fclose(f);
+            }
+	    std::cout << "Preparing with file B...\n";
+            set_scsi_pt_cdb(ptvp,cdb2,16);
+            set_scsi_pt_data_out(ptvp,newcode,sizeof(newcode));
+            do_scsi_pt(ptvp,scsi_fd,512,0);
+            destruct_scsi_pt_obj(ptvp);
+            std::cout << "Prepared with file B." << std::endl;
+        }
+
+
+
+
+        unsigned char cdb[] = { 0xfa , 0x0b , 0x20 , 0x00 , 0x00 , 0x00 , 0x00, 0x01,0x04,0x00,0x00,0x00,0x00,0x00,0x02,0x01 };
+        int i;
+        for(i=0;i<16;i++)
+        {
+          char p2[10];
+          sprintf(p2,"p%d",i);
+          if(vm.count(p2))
+          {
+            sscanf(vm[p2].as<std::string>().c_str(),"%hhu",&cdb[i]);
+          }
+        }
+        printf("cdb: [");
+        for(i=0;i<16;i++)
+        {
+          printf("0x%02x,",cdb[i]);
+        }
+        printf("]\n");
+
+        FILE * out=NULL;
+        if(vm.count("file"))
+        {
+          out = fopen(vm["file"].as<std::string>().c_str(),"wb");
+        }
+        unsigned char result[512];
+	memset(result,27,sizeof(result));
+
+        for(i=0;i<(block?(1<<(8*3)):1);i+=4)
+        {
+          if(block)
+          {
+            cdb[5]=(i>>0) & 0xff;
+            cdb[4]=(i>>8) & 0xff;
+            cdb[3]=(i>>16) & 0xff;
+          }
+          ptvp = construct_scsi_pt_obj();
+          set_scsi_pt_cdb(ptvp,cdb,16);
+          set_scsi_pt_data_in(ptvp,result,512);
+          do_scsi_pt(ptvp,scsi_fd,512,0);
+          int data_len = 512 - get_scsi_pt_resid(ptvp);
+          //printf("data_len: %d\n",data_len); 
+          if(!vm.count("file"))
+          {
+            for(i=0;i<data_len;i++)
+            {
+              if(!(i%16)) printf("\n");
+              printf("%02X ",result[i]);
+            }
+            printf("\n");
+          }
+          if(vm.count("file"))
+          {
+            fwrite(result,1,512,out);
+          }
+          destruct_scsi_pt_obj(ptvp);
+        }
+
+        if(vm.count("file"))
+        {
+          fclose(out);
+        }
+        std::cout << "Sectors downloaded." << std::endl;
+		scsi_pt_close_device(scsi_fd);
+        return 0;
+    }
+
     if ( vm.count("setconfig") && vm.count("device") )
     {
         int scsi_fd;
